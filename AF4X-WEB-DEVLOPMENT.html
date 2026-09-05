@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Purchase Portal</title>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+
+  <style>
+    * { 
+      box-sizing: border-box; 
+      font-family: 'Consolas', 'Segoe UI', monospace; 
+      margin: 0; 
+      padding: 0; 
+      border-radius: 0px !important; /* Sharp Edges */
+    }
+    
+    body { 
+      background-color: #0d0d0d; 
+      color: #ffffff; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh; 
+      padding: 20px; 
+    }
+
+    .card { 
+      background: #161616; 
+      border: 2px solid #ff1744; 
+      padding: 24px; 
+      width: 100%; 
+      max-width: 420px; 
+      box-shadow: 0 0 20px rgba(255, 23, 68, 0.25); 
+      position: relative; 
+      animation: fadeIn 0.4s ease-in-out;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .header { 
+      display: flex; 
+      justify-content: space-between; 
+      align-items: center; 
+      margin-bottom: 20px; 
+      border-bottom: 1px solid #333;
+      padding-bottom: 10px;
+    }
+
+    .help-btn { 
+      background: #000; 
+      color: #ff1744; 
+      border: 1px solid #ff1744; 
+      padding: 6px 12px; 
+      cursor: pointer; 
+      font-size: 11px; 
+      font-weight: bold;
+      transition: 0.2s;
+    }
+    .help-btn:hover { background: #ff1744; color: #000; }
+    
+    h2 { font-size: 20px; margin-bottom: 10px; color: #ff1744; text-transform: uppercase; letter-spacing: 1px; }
+    p { font-size: 13px; color: #bbb; margin-bottom: 15px; }
+    
+    .step { display: none; }
+    .step.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+    
+    input, select { 
+      width: 100%; 
+      padding: 12px; 
+      margin-bottom: 15px; 
+      border: 1px solid #ff1744; 
+      background: #080808; 
+      color: #fff; 
+      font-size: 14px; 
+      outline: none;
+    }
+    input:focus, select:focus { background: #121212; border-color: #ff5252; box-shadow: 0 0 8px rgba(255,23,68,0.5); }
+    
+    .btn { 
+      width: 100%; 
+      padding: 13px; 
+      background: #ff1744; 
+      border: 1px solid #ff1744; 
+      color: #fff; 
+      font-weight: bold; 
+      cursor: pointer; 
+      font-size: 15px; 
+      margin-top: 10px; 
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: 0.2s;
+    }
+    .btn:hover { background: #d50000; border-color: #d50000; box-shadow: 0 0 12px rgba(255,23,68,0.6); }
+    
+    .btn-secondary { background: #222; border: 1px solid #444; color: #aaa; margin-top: 5px; }
+    .btn-secondary:hover { background: #333; color: #fff; }
+    
+    .qr-box { text-align: center; margin: 15px 0; background: #fff; padding: 15px; border: 2px solid #ff1744; color: #000; }
+    .qr-box img { max-width: 180px; }
+    
+    /* Timer & Waiting Box */
+    .timer-box { background: #080808; border: 1px solid #ff9100; padding: 10px; text-align: center; margin-bottom: 15px; }
+    .timer-text { font-size: 22px; font-weight: bold; color: #ff9100; font-family: monospace; }
+
+    .waiting-box { text-align: center; padding: 20px 10px; }
+    .waiting-spinner { font-size: 40px; margin-bottom: 10px; display: inline-block; animation: spinPulse 1.2s infinite ease-in-out; }
+    @keyframes spinPulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
+
+    .cred-display { background: #000; border: 1px dashed #ff1744; padding: 12px; margin-top: 10px; text-align: left; }
+    .cred-item { font-size: 13px; font-weight: bold; color: #ffffff; margin: 6px 0; display: flex; justify-content: space-between; }
+    .cred-value { color: #ff1744; font-family: monospace; font-size: 15px; }
+
+    .status-badge { display: block; text-align: center; padding: 10px; font-size: 12px; margin: 10px 0; font-weight: bold; letter-spacing: 0.5px; }
+    .pending { background: #261700; color: #ff9100; border: 1px solid #ff9100; animation: blink 1.5s infinite; }
+    .active-badge { background: #002208; color: #00e676; border: 1px solid #00e676; box-shadow: 0 0 10px rgba(0,230,118,0.4); }
+
+    @keyframes blink { 0% { opacity: 0.7; } 50% { opacity: 1; } 100% { opacity: 0.7; } }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="header">
+    <span style="font-size: 12px; color: #ff1744; font-weight: bold;">[ PANEL STORE ]</span>
+    <button class="help-btn" onclick="openHelp()">💬 HELP / SUPPORT</button>
+  </div>
+
+  <div id="step1" class="step active">
+    <h2>Welcome User! 👋</h2>
+    <p>Get active credentials for Free Fire, FF Max, Pokemon GO & more (1 Month Sub).</p>
+    <button class="btn" onclick="nextStep(2)">Get Started</button>
+  </div>
+
+  <div id="step2" class="step">
+  <h2>Step 2: Customer Email</h2>
+  <p>Enter your Email to register your order.</p>
+
+  <input type="email" id="userEmail" placeholder="ENTER EMAIL ADDRESS" required>
+  <p id="emailError" style="color: #ff1744; font-size: 11px; margin-top: -10px; display: none;">
+    ❌ Please enter a valid email address (e.g., example@gmail.com)
+  </p>
+
+  <button class="btn" onclick="validateAndNextStep()">Next</button>
+  <button class="btn btn-secondary" onclick="nextStep(1)">Back</button>
+</div>
+
+
+  <div id="step3" class="step">
+    <h2>Step 3: Select Game</h2>
+    <p>Choose the game you need access for.</p>
+    <select id="gameSelect">
+      <option value="Free Fire">Free Fire</option>
+      <option value="FF Max">FF Max</option>
+      <option value="Pokemon GO">Pokemon GO</option>
+    </select>
+    <button class="btn" onclick="nextStep(4)">Next</button>
+    <button class="btn btn-secondary" onclick="nextStep(2)">Back</button>
+  </div>
+
+  <div id="step4" class="step">
+    <h2>Step 4: Architecture</h2>
+    <p>Choose your app architecture version.</p>
+    <select id="bitSelect">
+      <option value="32 Bit">32-Bit Version</option>
+      <option value="64 Bit">64-Bit Version</option>
+    </select>
+    <button class="btn" onclick="requestPaymentSlot()">Next</button>
+    <button class="btn btn-secondary" onclick="nextStep(3)">Back</button>
+  </div>
+
+  <div id="stepWaiting" class="step">
+    <div class="waiting-box">
+      <span class="waiting-spinner">⏳</span>
+      <h2 style="color:#ff9100;">SERVER BUSY!</h2>
+      <p>Another user is currently completing their payment. Please wait for your turn.</p>
+      <div class="timer-box">
+        <p style="font-size:11px; color:#aaa; margin-bottom:4px;">SLOT AVAILABLE IN:</p>
+        <span id="waitTimerDisplay" class="timer-text">02:00</span>
+      </div>
+    </div>
+  </div>
+
+  <div id="step5" class="step">
+    <h2>Step 5: Payment & Auto-Active</h2>
+    
+    <div class="timer-box">
+      <p style="font-size:10px; color:#ff9100; margin-bottom:2px;">⚠️ COMPLETE PAYMENT BEFORE TIME EXPIRES</p>
+      <span id="userTimerDisplay" class="timer-text">02:00</span>
+    </div>
+
+    <div class="qr-box">
+      <img id="qrImage" src="" alt="Payment QR">
+      <p style="color:#000; font-weight:bold; font-size:11px; margin-top:4px;">UPI ID: aakarshpal@fam</p>
+    </div>
+
+    <div id="paymentStatusBadge" class="status-badge pending">
+      ⏳ WAITING FOR PAYMENT VERIFICATION...
+    </div>
+
+    <div class="cred-display">
+      <div class="cred-item">
+        <span>USERNAME:</span>
+        <span class="cred-value" id="qrUsernameDisplay">---</span>
+      </div>
+      <div class="cred-item">
+        <span>PASSWORD:</span>
+        <span class="cred-value" id="qrPasswordDisplay">---</span>
+      </div>
+    </div>
+
+    <div id="proceedContainer" style="display:none; margin-top:10px;">
+      <button class="btn" style="background:#00e676; border-color:#00e676; color:#000;" onclick="nextStep(6)">Proceed to Account Details 🎉</button>
+    </div>
+
+    <button class="btn btn-secondary" onclick="releaseLockAndBack()">Cancel / Back</button>
+  </div>
+
+  <div id="step6" class="step">
+    <h2 style="color:#00e676;">USER ADDED SUCCESSFULLY! 🎉</h2>
+    <p>Your subscription is now active for 1 Month.</p>
+    
+    <div class="cred-display" style="border: 2px solid #00e676; padding: 15px;">
+      <div class="cred-item">
+        <span>USERNAME:</span>
+        <span class="cred-value" style="color:#00e676;" id="dispUsername">---</span>
+      </div>
+      <div class="cred-item">
+        <span>PASSWORD:</span>
+        <span class="cred-value" style="color:#00e676;" id="dispPassword">---</span>
+      </div>
+      <div class="cred-item">
+        <span>PLAN:</span>
+        <span class="cred-value" style="color:#fff; font-size:12px;">1 Month Access</span>
+      </div>
+    </div>
+
+    <p style="font-size: 11px; color: #888; margin-top: 15px; text-align: center;">
+      Thank you for your purchase! You can now log in to the app/panel.
+    </p>
+  </div>
+</div>
+
+
+
+<script>
+  // --- Email Validation Function ---
+function isValidEmail(email) {
+  // Regex check for format: name@domain.com
+  const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+  return emailRegex.test(email.trim());
+}
+
+function validateAndNextStep() {
+  const emailInput = document.getElementById('userEmail').value.trim();
+  const errorMsg = document.getElementById('emailError');
+
+  // Check if email is valid
+  if (!emailInput || !isValidEmail(emailInput)) {
+    errorMsg.style.display = "block"; // Show Red Error
+    document.getElementById('userEmail').style.borderColor = "#ff1744";
+  } else {
+    errorMsg.style.display = "none";  // Hide Error
+    document.getElementById('userEmail').style.borderColor = "#00e676"; // Green border on success
+    nextStep(3); // Proceed to Step 3
+  }
+}
+
+  // --- Firebase Configuration ---
+  
+  const firebaseConfig = {
+    apiKey: "AIzaSyBdNcBRZPVv9xo-gx57qbZVwnYRlBw8FLs",
+    databaseURL: "https://loginform-8458e-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "loginform-8458e",
+    storageBucket: "loginform-8458e.firebasestorage.app"
+  };
+
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  let currentStep = 1;
+  let generatedUsername = "";
+  let generatedPassword = "";
+  let mySessionId = Math.random().toString(36).substring(7);
+  let countdownInterval = null;
+
+  function nextStep(step) {
+    document.getElementById(`step${currentStep}`).classList.remove('active');
+    document.getElementById(`step${step}`).classList.add('active');
+    currentStep = step;
+  }
+
+  function openHelp() {
+    window.open('https://discord.gg/cW8mZ3PMz', '_blank');
+  }
+
+  // --- 2-MINUTE SLOT LOCK SYSTEM ---
+  function requestPaymentSlot() {
+    const email = document.getElementById('userEmail').value;
+    if (!email) {
+      alert("Kripya pehle Email id bharein!");
+      nextStep(2);
+      return;
+    }
+
+    const lockRef = db.ref('SystemLock');
+    const now = Date.now();
+
+    lockRef.get().then((snapshot) => {
+      const lockData = snapshot.val();
+
+      if (!lockData || (now - lockData.timestamp) > 120000 || lockData.session === mySessionId) {
+        lockRef.set({ session: mySessionId, timestamp: now }).then(() => {
+          proceedToPaymentQR();
+        });
+      } else {
+        const remainingMs = 120000 - (now - lockData.timestamp);
+        showWaitingScreen(Math.ceil(remainingMs / 1000));
+      }
+    });
+  }
+
+  function showWaitingScreen(secondsLeft) {
+    nextStep('Waiting');
+    let timeLeft = secondsLeft;
+
+    if (countdownInterval) clearInterval(countdownInterval);
+
+    countdownInterval = setInterval(() => {
+      timeLeft--;
+      let mins = Math.floor(timeLeft / 60);
+      let secs = timeLeft % 60;
+      document.getElementById('waitTimerDisplay').innerText = 
+        `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+      if (timeLeft <= 0) {
+        clearInterval(countdownInterval);
+        requestPaymentSlot();
+      }
+    }, 1000);
+  }
+
+  function proceedToPaymentQR() {
+    if (!generatedUsername) {
+      const counterRef = db.ref('Settings/last_user_id');
+      counterRef.transaction((currentValue) => {
+        return (currentValue || 1000) + 1;
+      }, (error, committed, snapshot) => {
+        if (committed) {
+          generatedUsername = "user" + snapshot.val();
+          generatedPassword = "PASS_" + Math.floor(1000 + Math.random() * 9000);
+
+          document.getElementById('qrUsernameDisplay').innerText = generatedUsername;
+          document.getElementById('qrPasswordDisplay').innerText = generatedPassword;
+          document.getElementById('dispUsername').innerText = generatedUsername;
+          document.getElementById('dispPassword').innerText = generatedPassword;
+
+          const upiUrl = `upi://pay?pa=aakarshpal@fam&pn=aakarsh&am=250&tn=${generatedUsername}`;
+          const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiUrl)}`;
+          document.getElementById('qrImage').src = qrApiUrl;
+
+          createNewPendingUser();
+          startUserTimer(120);
+          nextStep(5);
+        }
+      });
+    } else {
+      startUserTimer(120);
+      nextStep(5);
+    }
+  }
+
+  function createNewPendingUser() {
+    const email = document.getElementById('userEmail').value;
+    const game = document.getElementById('gameSelect').value;
+    const bit = document.getElementById('bitSelect').value;
+
+    const today = new Date();
+    today.setMonth(today.getMonth() + 1);
+    const expiryDateStr = today.toISOString().split('T')[0];
+
+    db.ref('Users/' + generatedUsername).set({
+      created_by: "Aakarsh",     
+      device_id: "",             
+      expiry: expiryDateStr,     
+      hwid: "",                  
+      password: generatedPassword,
+      status: "OFF",             
+      email: email,              
+      game: game,
+      bitVersion: bit
+    });
+
+    listenForAutoActivation(generatedUsername);
+  }
+
+  function listenForAutoActivation(username) {
+    db.ref('Users/' + username + '/status').on('value', (snapshot) => {
+      const status = (snapshot.val() || "").toString().toLowerCase();
+
+      if (status === "on" || status === "active" || status === "true") {
+        if (countdownInterval) clearInterval(countdownInterval);
+
+        const badge = document.getElementById('paymentStatusBadge');
+        badge.innerText = "✅ PAYMENT VERIFIED! USER ADDED SUCCESSFULLY!";
+        badge.className = "status-badge active-badge";
+
+        document.getElementById('proceedContainer').style.display = "block";
+        db.ref('SystemLock').remove();
+      }
+    });
+  }
+
+  function startUserTimer(seconds) {
+    let timeLeft = seconds;
+    if (countdownInterval) clearInterval(countdownInterval);
+
+    countdownInterval = setInterval(() => {
+      timeLeft--;
+      let mins = Math.floor(timeLeft / 60);
+      let secs = timeLeft % 60;
+      document.getElementById('userTimerDisplay').innerText = 
+        `${mins < 10 ? '0' : ''}${mins}:${secs < 10 ? '0' : ''}${secs}`;
+
+      if (timeLeft <= 0) {
+        clearInterval(countdownInterval);
+        alert("Time Expired! Slot released.");
+        releaseLockAndBack();
+      }
+    }, 1000);
+  }
+
+  function releaseLockAndBack() {
+    if (countdownInterval) clearInterval(countdownInterval);
+    db.ref('SystemLock').remove();
+    nextStep(4);
+  }
+</script>
+
+</body>
+</html>
