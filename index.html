@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -150,14 +151,28 @@
 </div>
 
 
+ <!-- STEP 3: Panel Type Selection (Tab System with Dynamic Prices) -->
   <div id="step3" class="step">
-    <h2>Step 3: Select Game</h2>
-    <p>Choose the game you need access for.</p>
-    <select id="gameSelect">
-      <option value="Free Fire">Free Fire</option>
-      <option value="FF Max">FF Max</option>
-      <option value="Pokemon GO">Pokemon GO</option>
-    </select>
+    <h2>Step 3: Select Panel Type</h2>
+    <p>Choose your preferred panel tier:</p>
+
+    <!-- Hidden Input for Selected Panel & Price -->
+    <input type="hidden" id="panelTypeSelect" value="Streamer">
+    <input type="hidden" id="panelPriceSelect" value="250">
+
+    <!-- Tab Container -->
+    <div class="tab-container">
+      <button class="tab-btn active" onclick="selectPanelTab(this, 'Streamer', 250)">STREAMER</button>
+      <button class="tab-btn" onclick="selectPanelTab(this, 'Aimkill', 300)">AIMKILL</button>
+      <button class="tab-btn" onclick="selectPanelTab(this, 'Brutal', 400)">BRUTAL</button>
+    </div>
+
+    <!-- Details Box for Selected Tab -->
+    <div id="tabDescription" class="cred-display" style="margin-bottom: 15px; font-size: 12px; color: #bbb;">
+      ⚡ <span style="color: #ff1744; font-weight: bold;">STREAMER:</span> Safe features for main accounts.<br>
+      💰 <span style="color: #00e676; font-weight: bold;">PRICE: ₹250</span>
+    </div>
+
     <button class="btn" onclick="nextStep(4)">Next</button>
     <button class="btn btn-secondary" onclick="nextStep(2)">Back</button>
   </div>
@@ -248,7 +263,25 @@
 
 
 <script>
-  // --- Email Validation Function ---
+// --- Tab Selection Logic with Dynamic Price ---
+  function selectPanelTab(btnElement, panelType, price) {
+    const tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach(tab => tab.classList.remove('active'));
+
+    btnElement.classList.add('active');
+
+    document.getElementById('panelTypeSelect').value = panelType;
+    document.getElementById('panelPriceSelect').value = price;
+
+    const descBox = document.getElementById('tabDescription');
+    if (panelType === 'Streamer') {
+      descBox.innerHTML = `⚡ <span style="color: #ff1744; font-weight: bold;">STREAMER:</span> Safe features for main accounts.<br>💰 <span style="color: #00e676; font-weight: bold;">PRICE: ₹${price}</span>`;
+    } else if (panelType === 'Aimkill') {
+      descBox.innerHTML = `🎯 <span style="color: #ff1744; font-weight: bold;">AIMKILL:</span> Precision auto-lock features.<br>💰 <span style="color: #00e676; font-weight: bold;">PRICE: ₹${price}</span>`;
+    } else if (panelType === 'Brutal') {
+      descBox.innerHTML = `🔥 <span style="color: #ff1744; font-weight: bold;">BRUTAL / INTERNAL:</span> Full rage performance features.<br>💰 <span style="color: #00e676; font-weight: bold;">PRICE: ₹${price}</span>`;
+    }
+  }// --- Email Validation Function ---
 function isValidEmail(email) {
   // Regex check for format: name@domain.com
   const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
@@ -295,7 +328,7 @@ function validateAndNextStep() {
   }
 
   function openHelp() {
-    window.open('https://discord.gg/cW8mZ3PMz', '_blank');
+    window.open('https://t.me/YOUR_TELEGRAM_USERNAME', '_blank');
   }
 
   // --- 2-MINUTE SLOT LOCK SYSTEM ---
@@ -359,9 +392,11 @@ function validateAndNextStep() {
           document.getElementById('dispUsername').innerText = generatedUsername;
           document.getElementById('dispPassword').innerText = generatedPassword;
 
-          const upiUrl = `upi://pay?pa=aakarshpal@fam&pn=aakarsh&am=250&tn=${generatedUsername}`;
-          const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiUrl)}`;
-          document.getElementById('qrImage').src = qrApiUrl;
+          // QR Generation block me URL amount input se set karein:
+  const selectedPrice = document.getElementById('panelPriceSelect').value;
+  const upiUrl = `upi://pay?pa=aakarshpal@fam&pn=aakarsh&am=${selectedPrice}&tn=${generatedUsername}`;
+  const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(upiUrl)}`;
+  document.getElementById('qrImage').src = qrApiUrl;
 
           createNewPendingUser();
           startUserTimer(120);
@@ -376,7 +411,8 @@ function validateAndNextStep() {
 
   function createNewPendingUser() {
     const email = document.getElementById('userEmail').value;
-    const game = document.getElementById('gameSelect').value;
+    const panelType = document.getElementById('panelTypeSelect').value;
+    const price = document.getElementById('panelPriceSelect').value;
     const bit = document.getElementById('bitSelect').value;
 
     const today = new Date();
@@ -391,12 +427,14 @@ function validateAndNextStep() {
       password: generatedPassword,
       status: "OFF",             
       email: email,              
-      game: game,
+      panelType: panelType,
+      amount: price,
       bitVersion: bit
     });
 
     listenForAutoActivation(generatedUsername);
   }
+    
 
   function listenForAutoActivation(username) {
     db.ref('Users/' + username + '/status').on('value', (snapshot) => {
